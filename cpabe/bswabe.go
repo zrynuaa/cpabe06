@@ -89,13 +89,23 @@ func Setup(pub *PK, msk *Mk ) {
 	msk.beta = pairing.NewZr().Rand() //beta
 	msk.g_alpha = pairing.NewG2()
 
-	msk.g_alpha = pub.g.ThenPowZn(alpha) //g_alpha
-	beta_inv := msk.beta.ThenInvert()
-	pub.f = pub.g.ThenPowZn(beta_inv) //f
-	pub.h = pub.g.ThenPowZn(msk.beta) //h
+	msk.g_alpha = pub.g.NewFieldElement().Set(pub.g).ThenPowZn(alpha) //g_alpha
+	beta_inv := msk.beta.NewFieldElement().Set(msk.beta).ThenInvert()
+	pub.f = pub.g.NewFieldElement().Set(pub.g).ThenPowZn(beta_inv) //f
+	pub.h = pub.g.NewFieldElement().Set(pub.g).ThenPowZn(msk.beta) //h
 
-	pub.g_hat_alpha.Pair(pub.g,pub.g)
-	pub.g_hat_alpha.PowZn(pub.g_hat_alpha,alpha) //e(g,g)^alpha
+	pub.g_hat_alpha.Pair(pub.g,pub.g).ThenPowZn(alpha) //e(g,g)^alpha
+
+	fmt.Println("pk.g: ")
+	fmt.Println(pub.g.Bytes())
+	fmt.Println("pk.h: ")
+	fmt.Println(pub.h.Bytes())
+	fmt.Println("pk.g_hat_alpha: ")
+	fmt.Println(pub.g_hat_alpha.Bytes())
+	fmt.Println("mk.g_alpha: ")
+	fmt.Println(msk.g_alpha.Bytes())
+	fmt.Println("msk.beta: ")
+	fmt.Println(msk.beta.Bytes())
 }
 
 func Keygen(pub *PK, msk *Mk, attrs []string) *SK {
@@ -108,10 +118,10 @@ func Keygen(pub *PK, msk *Mk, attrs []string) *SK {
 	prv.r = pairing.NewZr().Rand()
 
 	/* compute */
-	g_r = pub.g.ThenPowZn(prv.r)
+	g_r = pub.g.NewFieldElement().Set(pub.g).ThenPowZn(prv.r)
 
-	beta_inv := msk.beta.ThenInvert()
-	prv.d = msk.g_alpha.ThenMul(g_r).ThenPowZn(beta_inv) //SK.D = g^((alpha+r)/beta)
+	beta_inv := msk.beta.NewFieldElement().Set(msk.beta).ThenInvert()
+	prv.d = msk.g_alpha.NewFieldElement().Set(msk.g_alpha).ThenMul(g_r).ThenPowZn(beta_inv) //SK.D = g^((alpha+r)/beta)
 
 	for i := 0; i < len(attrs); i++ {
 		var comp = new(BswabePrvComp)
@@ -126,8 +136,8 @@ func Keygen(pub *PK, msk *Mk, attrs []string) *SK {
 		ElementFromString(h_rp, comp.attr)
 		h_rp.PowZn(h_rp,rp)
 
-		comp.d = g_r.ThenMul(h_rp)
-		comp.dp = pub.g.ThenPowZn(rp)
+		comp.d = g_r.NewFieldElement().Set(g_r).ThenMul(h_rp)
+		comp.dp = pub.g.NewFieldElement().Set(pub.g).ThenPowZn(rp)
 
 		prv.comps = append(prv.comps, *comp)
 	}
@@ -148,8 +158,8 @@ func Enc( pub *PK, policy string) *CT {
 	cph.p = parsePolicyPostfix(policy)
 
 	/* compute */
-	cph.cs = pub.g_hat_alpha.ThenPowZn(s).ThenMul(m)
-	cph.c = pub.h.ThenPowZn(s)
+	cph.cs = pub.g_hat_alpha.NewFieldElement().Set(pub.g_hat_alpha).ThenPowZn(s).ThenMul(m)
+	cph.c = pub.h.NewFieldElement().Set(pub.h).ThenPowZn(s)
 
 	fillPolicy(cph.p, pub, s)
 	cph.key = m
@@ -174,7 +184,7 @@ func Dec( pub *PK, prv *SK, cph *CT) *ElementBoolean {
 
 
 	a.Pair(pub.g,pub.g).ThenPowZn(prv.r).ThenPowZn(cph.s)
-	m = cph.cs.ThenMul(t)
+	m = cph.cs.NewFieldElement().Set(cph.cs).ThenMul(a)
 
 	t.Pair(cph.c, prv.d)
 	m.ThenDiv(t)
@@ -259,7 +269,7 @@ func fillPolicy( p *Policy, pub *PK, s *pbc.Element) {
 		p.c = pairing.NewG1()
 		p.cp = pairing.NewG2()
 
-		p.c = pub.g.ThenPowZn(p.q.coef[0])
+		p.c = pub.g.NewFieldElement().Set(pub.g).ThenPowZn(p.q.coef[0])
 		ElementFromString(h, p.attr)
 		p.cp = h.ThenPowZn(p.q.coef[0])
 	} else {
@@ -280,7 +290,8 @@ func evalPoly( r *pbc.Element, q *Polynomial, x *pbc.Element) {
 
 	for i := 0; i < q.deg + 1; i++ {
 		/* r += q->coef[i] * t */
-		s = q.coef[i].ThenMul(t)
+		s = q.coef[i]
+		s.ThenMul(t)
 		r.Add(r,s)
 
 		/* t *= x */
