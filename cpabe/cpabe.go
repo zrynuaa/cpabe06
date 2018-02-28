@@ -45,8 +45,8 @@ func CP_Dec(pk *PK, sk *SK, cipher *Cipher) []byte {
 	fmt.Println("key_dec: ")
 	fmt.Println((beb.e.Bytes())[0:32])
 
-	//result,err := AES.AesDecrypt(cipher.ciphertext, (beb.e.Bytes())[0:32])
-	result,err := AES.AesDecrypt(cipher.ciphertext, (cipher.ct.key.Bytes())[0:32])
+	result,err := AES.AesDecrypt(cipher.ciphertext, (beb.e.Bytes())[0:32])
+	//result,err := AES.AesDecrypt(cipher.ciphertext, (cipher.ct.key.Bytes())[0:32])
 	if err!=nil {
 		fmt.Printf("AES Error\n")
 	}
