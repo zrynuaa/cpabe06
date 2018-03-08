@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"cpabe_new/bswabe"
+	"github.com/zrynuaa/cpabe06/bswabe"
 )
 
 func main()  {
