@@ -82,6 +82,7 @@ type BswabeElementBoolean struct{
  	*/
 	e *pbc.Element
 	b bool
+	B bool
 }
 
 type BswabeCphKey struct {
@@ -210,6 +211,80 @@ func Keygen(pub *BswabePub,msk *BswabeMsk, attrs []string) *BswabePrv {
 
 		prv.comps = append(prv.comps, comp)
 	}
+	return prv
+}
+
+/*
+     * Delegate a subset of attribute of an existing private key.
+     */
+func Delegate(pub *BswabePub, prv_src *BswabePrv, attrs_subset []string) *BswabePrv {
+	prv := new(BswabePrv)
+	var g_rt, rt, f_at_rt *pbc.Element
+
+	/* initialize */
+	pairing := pub.p
+	prv.d = pairing.NewG2()
+
+	g_rt = pairing.NewG2()
+	rt = pairing.NewZr()
+	f_at_rt = pairing.NewZr()
+
+	/* compute */
+	rt.Rand()
+	f_at_rt = pub.f.NewFieldElement().Set(pub.f)
+	f_at_rt.PowZn(f_at_rt, rt)
+	prv.d = prv_src.d.NewFieldElement().Set(prv_src.d)
+	prv.d.Mul(prv.d, f_at_rt)
+
+	g_rt = pub.g.NewFieldElement().Set(pub.g)
+	g_rt.PowZn(g_rt, rt)
+
+	//len := len(attrs_subset)
+	//prv.comps = new ArrayList<BswabePrvComp>();
+
+	for i := 0; i < len(attrs_subset); i++ {
+		comp := new(BswabePrvComp)
+		var h_rtp, rtp *pbc.Element
+
+		comp.attr = attrs_subset[i]
+
+		comp_src := new(BswabePrvComp)
+		comp_src_init := false
+
+		//for j := 0; j < len(prv_src.comps); ++j {
+		for j := 0; j < len(prv_src.comps); j++ {
+			if (prv_src.comps[j].attr == comp.attr) {
+				comp_src = prv_src.comps[j]
+				comp_src_init = true
+				break
+			}
+		}
+
+		if comp_src_init == false {
+			panic("comp_src_init == false")
+		}
+
+		comp.d = pairing.NewG2()
+		comp.dp = pairing.NewG1()
+		h_rtp = pairing.NewG2()
+		rtp = pairing.NewZr()
+
+		elementFromString(h_rtp, comp.attr)
+		rtp.Rand()
+
+		h_rtp.PowZn(h_rtp, rtp)
+
+		comp.d = g_rt.NewFieldElement().Set(g_rt)
+		comp.d.Mul(comp.d, h_rtp)
+		comp.d.Mul(comp.d, comp_src.d)
+
+		comp.dp = pub.g.NewFieldElement().Set(pub.g)
+		comp.dp.PowZn(comp.dp, rtp)
+		comp.dp.Mul(comp.dp, comp_src.dp)
+
+		prv.comps = append(prv.comps, comp)
+	}
+
 	return prv
 }
 
