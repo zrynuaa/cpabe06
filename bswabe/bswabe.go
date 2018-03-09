@@ -17,7 +17,7 @@ type BswabePub struct{
 	g *pbc.Element				/* G_1 */
 	h *pbc.Element				/* G_1 */
 	f *pbc.Element				/* G_1 */
-	//gp *pbc.Element				/* G_2 */
+	gp *pbc.Element				/* G_2 */
 	g_hat_alpha *pbc.Element	/* G_T */
 }
 
@@ -80,8 +80,7 @@ type BswabeElementBoolean struct{
  	* This class is defined for some classes who return both boolean and
  	* Element.
  	*/
-	e *pbc.Element
-	b bool
+	E *pbc.Element
 	B bool
 }
 
@@ -90,8 +89,8 @@ type BswabeCphKey struct {
 	 * This class is defined for some classes who return both cph and key.
 	 */
 	ciphertext []byte
-	cph *BswabeCph
-	key *pbc.Element
+	Cph *BswabeCph
+	Key *pbc.Element
 }
 
 type BswabeCph struct {
@@ -132,7 +131,7 @@ func Setup(pub *BswabePub, msk *BswabeMsk) {
 	pub.g = pairing.NewG1()
 	pub.f = pairing.NewG1()
 	pub.h = pairing.NewG1()
-	//pub.gp = pairing.NewG2()
+	pub.gp = pairing.NewG2()
 	pub.g_hat_alpha = pairing.NewGT()
 	alpha = pairing.NewZr()
 	msk.beta = pairing.NewZr()
@@ -141,10 +140,10 @@ func Setup(pub *BswabePub, msk *BswabeMsk) {
 	alpha.Rand()
 	msk.beta.Rand()
 	pub.g.Rand()
-	//pub.gp.Rand()
+	pub.gp.Rand()
 
-	//msk.g_alpha = pub.gp.NewFieldElement().Set(pub.gp)
-	msk.g_alpha = pub.g.NewFieldElement().Set(pub.g)
+	msk.g_alpha = pub.gp.NewFieldElement().Set(pub.gp)
+	//msk.g_alpha = pub.g.NewFieldElement().Set(pub.g)
 	msk.g_alpha.PowZn(msk.g_alpha, alpha)
 
 	beta_inv = msk.beta.NewFieldElement().Set(msk.beta)
@@ -178,8 +177,8 @@ func Keygen(pub *BswabePub,msk *BswabeMsk, attrs []string) *BswabePrv {
 	/* compute */
 	r.Rand()
 	prv.r = r.NewFieldElement().Set(r)
-	//g_r = pub.gp.NewFieldElement().Set(pub.gp)
-	g_r = pub.g.NewFieldElement().Set(pub.g)
+	g_r = pub.gp.NewFieldElement().Set(pub.gp)
+	//g_r = pub.g.NewFieldElement().Set(pub.g)
 	g_r.PowZn(g_r, r)
 
 	prv.d = msk.g_alpha.NewFieldElement().Set(msk.g_alpha)
@@ -218,11 +217,13 @@ func Keygen(pub *BswabePub,msk *BswabeMsk, attrs []string) *BswabePrv {
      * Delegate a subset of attribute of an existing private key.
      */
 func Delegate(pub *BswabePub, prv_src *BswabePrv, attrs_subset []string) *BswabePrv {
+
 	prv := new(BswabePrv)
 	var g_rt, rt, f_at_rt *pbc.Element
+	var pairing *pbc.Pairing
 
 	/* initialize */
-	pairing := pub.p
+	pairing = pub.p
 	prv.d = pairing.NewG2()
 
 	g_rt = pairing.NewG2()
@@ -239,21 +240,21 @@ func Delegate(pub *BswabePub, prv_src *BswabePrv, attrs_subset []string) *Bswabe
 	g_rt = pub.g.NewFieldElement().Set(pub.g)
 	g_rt.PowZn(g_rt, rt)
 
-	//len := len(attrs_subset)
+	//len = attrs_subset.length
 	//prv.comps = new ArrayList<BswabePrvComp>();
 
 	for i := 0; i < len(attrs_subset); i++ {
 		comp := new(BswabePrvComp)
-		var h_rtp, rtp *pbc.Element
+		var h_rtp *pbc.Element
+		var rtp *pbc.Element
 
 		comp.attr = attrs_subset[i]
 
 		comp_src := new(BswabePrvComp)
 		comp_src_init := false
 
-		//for j := 0; j < len(prv_src.comps); ++j {
 		for j := 0; j < len(prv_src.comps); j++ {
-			if (prv_src.comps[j].attr == comp.attr) {
+			if strings.Compare(prv_src.comps[j].attr, comp.attr) == 0 {
 				comp_src = prv_src.comps[j]
 				comp_src_init = true
 				break
@@ -269,7 +270,7 @@ func Delegate(pub *BswabePub, prv_src *BswabePrv, attrs_subset []string) *Bswabe
 		h_rtp = pairing.NewG2()
 		rtp = pairing.NewZr()
 
-		elementFromString(h_rtp, comp.attr)
+		elementFromString(h_rtp, comp.attr);
 		rtp.Rand()
 
 		h_rtp.PowZn(h_rtp, rtp)
@@ -282,7 +283,8 @@ func Delegate(pub *BswabePub, prv_src *BswabePrv, attrs_subset []string) *Bswabe
 		comp.dp.PowZn(comp.dp, rtp)
 		comp.dp.Mul(comp.dp, comp_src.dp)
 
-		prv.comps = append(prv.comps, comp)
+		prv.comps = append(prv.comps,comp)
+		//prv.comps.add(comp);
 	}
 
 	return prv
@@ -314,8 +316,8 @@ func Enc(pub *BswabePub, policy string) *BswabeCphKey {
 
 	fillPolicy(cph.p, pub, s)
 
-	keyCph.cph = cph
-	keyCph.key = m
+	keyCph.Cph = cph
+	keyCph.Key = m
 
 	return keyCph
 }
@@ -330,8 +332,8 @@ func Dec(pub *BswabePub, prv *BswabePrv, cph *BswabeCph) *BswabeElementBoolean {
 	checkSatisfy(cph.p, prv)
 	if (!cph.p.satisfiable) {
 		fmt.Println("cannot decrypt, attributes in key do not satisfy policy")
-		beb.e = nil
-		beb.b = false
+		beb.E = nil
+		beb.B = false
 		return beb
 	}
 
@@ -345,8 +347,8 @@ func Dec(pub *BswabePub, prv *BswabePrv, cph *BswabeCph) *BswabeElementBoolean {
 	t.Invert(t)
 	m.Mul(m, t) 		/* num_muls++; */
 
-	beb.e = m
-	beb.b = true
+	beb.E = m
+	beb.B = true
 	return beb
 }
 
