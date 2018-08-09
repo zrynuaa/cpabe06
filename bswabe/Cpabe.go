@@ -2,7 +2,7 @@ package bswabe
 
 import (
 "strings"
-"github.com/Doresimon/ABE/AES"
+//"github.com/Doresimon/ABE/AES"
 "fmt"
 )
 
@@ -23,7 +23,7 @@ func CP_Enc(pk *BswabePub, M string, p string) *BswabeCphKey {
 	fmt.Println("Enc key: ", (key.Bytes())[0:32])
 
 	m := []byte(M)
-	ciphertext,_ := AES.AesEncrypt(m, (key.Bytes())[0:32])
+	ciphertext,_ := AesEncrypt(m, (key.Bytes())[0:32])
 	keyCph.ciphertext = ciphertext
 
 	return keyCph
@@ -39,6 +39,6 @@ func CP_Dec(pk *BswabePub, sk *BswabePrv, keyCph *BswabeCphKey) []byte {
 	}
 
 	fmt.Println("Dec key: ", (beb.E.Bytes())[0:32])
-	result,_ := AES.AesDecrypt(keyCph.ciphertext, (beb.E.Bytes())[0:32])
+	result,_ := AesDecrypt(keyCph.ciphertext, (beb.E.Bytes())[0:32])
 	return result
 }
