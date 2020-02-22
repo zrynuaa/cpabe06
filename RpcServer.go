@@ -1,39 +1,48 @@
 package main
 
 import (
-	"net/rpc"
-	"net/http"
 	"fmt"
 	"github.com/zrynuaa/cpabe06/bswabe"
+	"net/http"
+	"net/rpc"
 )
 
 type CPABE int
+
 var pub *bswabe.BswabePub
 var msk *bswabe.BswabeMsk
 
-
-func (c *CPABE)Getpub(args string, reply *[]byte) error {
+func (c *CPABE) Getpub(args string, reply *[]byte) error {
 	pubdata := bswabe.SerializeBswabePub(pub)
 	*reply = pubdata
 	return nil
 }
 
-func (c *CPABE)Getsk(args string, reply *[]byte) error {
+func (c *CPABE) Getsk(args string, reply *[]byte) error {
 	prv := bswabe.CP_Keygen(pub, msk, args)
-	prvdata := bswabe.SerializeBswabePrv(prv)
-	*reply = prvdata
+	privateKey := bswabe.SerializeBswabePrv(prv)
+	*reply = privateKey
 	return nil
 }
 
-//func (c *CPABE)Enc(args *Encdata, reply *[]byte) error {
-//	return nil
-//}
-//
-//func (c *CPABE)Dec(args *Decdata, reply *[]byte) error {
-//	return nil
-//}
+func (c *CPABE) Enc(args []string, reply *[]byte) error {
+	M := args[0]
+	policy := args[1]
+	keyCph := bswabe.CP_Enc(pub, M, policy)
+	data := bswabe.SerializeBswabeCphKey(keyCph)
+	*reply = data
+	return nil
+}
 
-func main()  {
+func (c *CPABE) Dec(args []string, reply *[]byte) error {
+	privateKey := bswabe.UnSerializeBswabePrv(pub, []byte(args[0]))
+	ct := bswabe.UnSerializeBswabeCphKey(pub, []byte(args[1]))
+	m := bswabe.CP_Dec(pub, privateKey, ct)
+	*reply = m
+	return nil
+}
+
+func main() {
 	pub = new(bswabe.BswabePub)
 	msk = new(bswabe.BswabeMsk)
 	bswabe.CP_Setup(pub, msk) //setup
@@ -47,5 +56,3 @@ func main()  {
 		fmt.Println(err.Error())
 	}
 }
-
-

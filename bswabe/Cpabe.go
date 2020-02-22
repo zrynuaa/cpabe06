@@ -34,7 +34,7 @@ func CP_Dec(pk *BswabePub, sk *BswabePrv, keyCph *BswabeCphKey) []byte {
 	fmt.Println("----------Begin Dec----------")
 	beb := Dec(pk,sk,keyCph.Cph)
 	if !beb.B {
-		fmt.Println("Policy unmatched!\n")
+		fmt.Println("Policy unmatched!")
 		return nil
 	}
 
