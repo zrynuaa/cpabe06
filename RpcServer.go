@@ -18,8 +18,8 @@ func (c *CPABE) Getpub(args string, reply *[]byte) error {
 	return nil
 }
 
-func (c *CPABE) Getsk(args string, reply *[]byte) error {
-	prv := bswabe.CP_Keygen(pub, msk, args)
+func (c *CPABE) Getsk(attr string, reply *[]byte) error {
+	prv := bswabe.CP_Keygen(pub, msk, attr)
 	privateKey := bswabe.SerializeBswabePrv(prv)
 	*reply = privateKey
 	return nil
