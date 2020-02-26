@@ -11,6 +11,8 @@ type CPABE int
 
 var pub *bswabe.BswabePub
 var msk *bswabe.BswabeMsk
+var prvMap = make(map[string]*bswabe.BswabePrv)
+var ctMap = make(map[string]*bswabe.BswabeCphKey)
 
 func (c *CPABE) Getpub(args string, reply *[]byte) error {
 	pubdata := bswabe.SerializeBswabePub(pub)
@@ -19,7 +21,13 @@ func (c *CPABE) Getpub(args string, reply *[]byte) error {
 }
 
 func (c *CPABE) Getsk(attr string, reply *[]byte) error {
-	prv := bswabe.CP_Keygen(pub, msk, attr)
+	var prv *bswabe.BswabePrv
+	if prvMap[attr] == nil {
+		prv = bswabe.CP_Keygen(pub, msk, attr)
+		prvMap[attr] = prv
+	} else {
+		prv = prvMap[attr]
+	}
 	privateKey := bswabe.SerializeBswabePrv(prv)
 	*reply = privateKey
 	return nil
@@ -28,7 +36,13 @@ func (c *CPABE) Getsk(attr string, reply *[]byte) error {
 func (c *CPABE) Enc(args []string, reply *[]byte) error {
 	M := args[0]
 	policy := args[1]
-	keyCph := bswabe.CP_Enc(pub, M, policy)
+	var keyCph *bswabe.BswabeCphKey
+	if ctMap[M] == nil {
+		keyCph = bswabe.CP_Enc(pub, M, policy)
+		ctMap[M] = keyCph
+	} else {
+		keyCph = ctMap[M]
+	}
 	data := bswabe.SerializeBswabeCphKey(keyCph)
 	*reply = data
 	return nil
